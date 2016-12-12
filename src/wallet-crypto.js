@@ -277,6 +277,11 @@ function encryptDataWithPassword (data, password, iterations) {
   return encryptDataWithKey(data, key, salt);
 }
 
+function stringToKey (string, iterations) {
+  var key = module.exports.stretchPassword(string, 'salt', iterations, KEY_BIT_LEN);
+  return key;
+}
+
 // payload: Base64 encoded concatenated payload + iv
 // key: AES key (256 bit Buffer)
 // returns: decrypted payload (e.g. a JSON string)
@@ -573,6 +578,7 @@ module.exports = {
   decryptSecretWithSecondPassword: decryptSecretWithSecondPassword,
   encryptSecretWithSecondPassword: encryptSecretWithSecondPassword,
   decryptPasswordWithProcessedPin: decryptPasswordWithProcessedPin,
+  stringToKey: stringToKey,
   decrypt: decryptDataWithPassword,
   encrypt: encryptDataWithPassword,
   stretchPassword: stretchPassword,
