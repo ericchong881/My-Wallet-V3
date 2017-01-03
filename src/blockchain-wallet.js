@@ -41,7 +41,7 @@ function Wallet (object) {
   this._fee_per_kb = obj.options.fee_per_kb == null ? 10000 : obj.options.fee_per_kb;
   this._html5_notifications = obj.options.html5_notifications;
   this._logout_time = obj.options.logout_time;
-  this._metadataHDNode = null;
+  this._metadataHDNode = null;  // used to load metadata service
 
   // legacy addresses list
   this._addresses = obj.keys ? obj.keys.reduce(Address.factory, {}) : undefined;
@@ -851,25 +851,16 @@ Wallet.prototype.loadExternal = function () {
   if (this.isDoubleEncrypted === true || !this.isUpgradedToHD) {
     return Promise.resolve();
   } else {
+
     this._external = new External(this);
     return this._external.fetch();
   }
 };
 
 Wallet.prototype.metadata = function (typeId) {
-  var masterhdnode = this.hdwallet.getMasterHDNode();
-  return Metadata.fromMasterHDNode(masterhdnode, typeId);
+  // var masterhdnode = this.hdwallet.getMasterHDNode();
+  return Metadata.fromMetadataHDNode(this._metadataHDNode, typeId);
 };
-
-// Wallet.prototype.secondPasswordDrama = function () {
-//   var entropy = WalletCrypto.sha256(Buffer.from(this.guid + this.sharedKey));
-//   var d = BigInteger.fromBuffer(entropy);
-//   var masterhdnode = this.hdwallet.getMasterHDNode();
-//   var toStore = masterhdnode.toBase58();
-//   var key = Bitcoin.ECPair(d, null);
-//   // return new Bitcoin.ECPair(d, null);
-//   return masterhdnode;
-// };
 
 Wallet.prototype.secondPasswordMetadataFactory = function () {
   var entropy = WalletCrypto.sha256(Buffer.from(this.guid + this.sharedKey));
@@ -883,29 +874,33 @@ Wallet.prototype.secondPasswordMetadataFactory = function () {
 Wallet.prototype.fetchMetadataHDnode = function () {
   var self = this;
   var m = this.secondPasswordMetadataFactory();
+  console.log(m);
   return m.fetch().then(function (res) {
     if (res == null) {
       // no record found
       return Promise.reject('HDNODE_NOT_FOUND');
     } else {
-      self._metadataHDNode = Bitcoin.HDNode.fromBase58(res.hdnode);
-      return Bitcoin.HDNode.fromBase58(res.hdnode);
+      var node = Bitcoin.HDNode.fromBase58(res.metadata);
+      self._metadataHDNode = node;
+      return node;
     }
   });
 };
 
 Wallet.prototype.saveMetadataHDnode = function (password) {
+  var self = this;
   var cipher = null;
   if (this.isDoubleEncrypted) {
     if (!password) { throw new Error('second password needed'); }
     cipher = WalletCrypto.cipherFunction(password, this._sharedKey, this._pbkdf2_iterations, 'dec');
   }
   var masterhdnode = this.hdwallet.getMasterHDNode(cipher);
-  var data = {hdnode: masterhdnode.toBase58()};
+  var metadataHDNode = Metadata.masterToMetaNode(masterhdnode, Metadata.PURPOSE);
+  var data = {metadata: metadataHDNode.toBase58()};
   var m = this.secondPasswordMetadataFactory();
   m.fetch();
   return m.update(data).then(function (x) {
-    this._metadataHDNode = masterhdnode;
+    self._metadataHDNode = metadataHDNode;
     return x;
   });
 };
