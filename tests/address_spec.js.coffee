@@ -84,6 +84,11 @@ ImportExport =
 WalletCrypto =
   decryptSecretWithSecondPassword: (data, pw) -> data + '_decrypted_with_' + pw
 
+Constants = {
+  APP_NAME: 'jasmine',
+  APP_VERSION: '3.0'
+}
+
 stubs = {
   './wallet': MyWallet,
   './rng' : RNG,
@@ -91,6 +96,7 @@ stubs = {
   './import-export': ImportExport,
   './wallet-crypto': WalletCrypto,
   './helpers' : Helpers,
+  './constants' : Constants,
   'bitcoinjs-lib': Bitcoin,
   'bs58' : Base58
 }
@@ -112,6 +118,9 @@ describe "Address", ->
   beforeEach ->
     spyOn(MyWallet, "syncWallet")
     spyOn(MyWallet.wallet, "getHistory")
+
+  afterEach ->
+    RNG.shouldThrow = false
 
   describe "class", ->
     describe "new Address()", ->
@@ -166,6 +175,11 @@ describe "Address", ->
         # inside the RNG, which is the case in version 2.1.4
         RNG.shouldThrow = true
         expect(() -> Address.new("My New Address")).toThrow(Error('Connection failed'))
+
+      it "should set creation platform and version", ->
+        a = Address.new("My New Address")
+        expect(a.created_device_name).toEqual('jasmine')
+        expect(a.created_device_version).toEqual('3.0')
 
   describe "instance", ->
     beforeEach ->
